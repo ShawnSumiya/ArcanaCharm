@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArcanaCharm - イベント別ギャラリー</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* パステルカラーのグラデーション背景 */
+        .cute-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, 
+                #ffeaa7 0%,     /* パステルイエロー */
+                #fab1a0 25%,    /* パステルオレンジ */
+                #fd79a8 50%,    /* パステルピンク */
+                #e17055 75%,    /* パステルコーラル */
+                #74b9ff 100%    /* パステルブルー */
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            overflow: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .floating-hearts {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .heart {
+            position: absolute;
+            color: #ff69b4;
+            font-size: 20px;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.7;
+        }
+
+        .star {
+            position: absolute;
+            color: #ffd700;
+            font-size: 15px;
+            animation: twinkle 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        .sparkle {
+            position: absolute;
+            color: #fff;
+            font-size: 12px;
+            animation: sparkle 2s ease-in-out infinite;
+            opacity: 0.9;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scale(0.8) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1) rotate(180deg);
+            }
+        }
+
+        .member-selection-page {
+            min-height: 100vh;
+            padding-top: 100px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-title {
+            text-align: center;
+            font-size: 3rem;
+            color: #fb83f5;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
+            position: relative;
+            -webkit-text-stroke: 2px #fcaef7;
+            font-family: 'Mochiy Pop One', cursive;
+        }
+
+        .page-title::before {
+            content: '💖';
+            position: absolute;
+            top: -20px;
+            left: -40px;
+            font-size: 2rem;
+            animation: heartBeat 2s ease-in-out infinite;
+        }
+
+        .page-title::after {
+            content: '✨';
+            position: absolute;
+            top: -15px;
+            right: -35px;
+            font-size: 1.5rem;
+            animation: sparkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 105, 180, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 105, 180, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .event-selection-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+            padding: 0 20px;
+            max-width: 1200px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .event-selection-item {
+            text-align: center;
+            padding: 2rem;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 15px 35px rgba(255, 105, 180, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            border: 3px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .event-selection-item:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(255, 105, 180, 0.3);
+            border-color: #ff69b4;
+        }
+
+        .event-selection-item img {
+            width: 250px;
+            height: 180px;
+            object-fit: cover;
+            border-radius: 15px;
+            margin-bottom: 1rem;
+            transition: transform 0.3s ease;
+            border: 4px solid #ff69b4;
+        }
+
+        /* ドレス衣装の画像位置調整 */
+        .event-selection-item[data-event="dress"] img {
+            object-position: center 25%;
+        }
+
+        /* 5月衣装の画像位置調整 */
+        .event-selection-item[data-event="may"] img {
+            object-position: center 25%;
+        }
+
+        /* 10月衣装の画像位置調整 */
+        .event-selection-item[data-event="october"] img {
+            object-position: center 30%;
+        }
+
+        .event-selection-item h3 {
+            margin: 1rem 0 0.5rem;
+            color: #333;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .event-selection-item p {
+            margin: 0;
+            color: #666;
+            font-size: 1rem;
+        }
+
+        /* 個人写真表示エリア */
+        .member-photos-section {
+            display: none;
+            margin-top: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(255, 105, 180, 0.2);
+            backdrop-filter: blur(10px);
+        }
+
+        .member-photos-section.active {
+            display: block;
+            animation: fadeInUp 0.5s ease;
+        }
+
+        .member-photos-section h3 {
+            text-align: center;
+            color: #ff69b4;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+            font-family: 'Mochiy Pop One', cursive;
+        }
+
+        /* グループ写真の特別スタイル */
+        .group-photo-item {
+            grid-column: 1 / -1; /* 全幅を占有 */
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        .group-photo-item img {
+            width: 100%;
+            max-width: 800px;
+            height: auto; /* 高さを自動調整 */
+            max-height: 500px;
+            object-fit: contain; /* 全体が映るように */
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(255, 105, 180, 0.3);
+        }
+
+        .group-photo-item .member-photo-overlay {
+            background: linear-gradient(45deg, rgba(255, 105, 180, 0.9), rgba(255, 20, 147, 0.9));
+        }
+
+        /* グループ写真セクションと個人写真セクションを分離 */
+        .group-photo-section {
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(255, 105, 180, 0.15);
+            text-align: center;
+        }
+
+        .individual-photos-section {
+            margin-top: 2rem;
+        }
+
+        .individual-photos-section h4 {
+            text-align: center;
+            color: #ff69b4;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            font-family: 'Mochiy Pop One', cursive;
+        }
+
+        /* 個人写真のグリッド調整 - 4枚を2x2で配置 */
+        .member-photos-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .member-photo-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 15px;
+            box-shadow: 0 8px 20px rgba(255, 105, 180, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .member-photo-item:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(255, 105, 180, 0.3);
+        }
+
+        .member-photo-item img {
+            width: 100%;
+            height: 400px; /* 高さを増やして縦長に */
+            object-fit: contain; /* coverからcontainに変更して全体を表示 */
+            transition: transform 0.3s ease;
+            background-color: #f8f9fa; /* 背景色を追加 */
+        }
+
+        .member-photo-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .member-photo-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 105, 180, 0.8), rgba(255, 20, 147, 0.8));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .member-photo-item:hover .member-photo-overlay {
+            opacity: 1;
+        }
+
+        .member-photo-overlay h4 {
+            font-size: 1.2rem;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+        }
+
+        .member-photo-overlay i {
+            font-size: 2rem;
+        }
+
+        .back-to-events-btn {
+            display: block;
+            margin: 0 auto 2rem;
+            padding: 12px 24px;
+            background: #ff69b4;
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+        }
+
+        .back-to-events-btn:hover {
+            background: #ff1493;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.4);
+        }
+
+        /* モーダル */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.9);
+        }
+
+        .modal-content {
+            margin: auto;
+            display: block;
+            max-width: 90%;
+            max-height: 90%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .close {
+            position: absolute;
+            top: 15px;
+            right: 35px;
+            color: #f1f1f1;
+            font-size: 40px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #e91e63;
+        }
+
+        .modal-caption {
+            margin: auto;
+            display: block;
+            width: 80%;
+            max-width: 700px;
+            text-align: center;
+            color: #ccc;
+            padding: 10px 0;
+            height: 150px;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .event-selection-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+                padding: 0 15px;
+            }
+            
+            .event-selection-item {
+                padding: 1.5rem;
+            }
+            
+            .event-selection-item img {
+                width: 180px;
+                height: 130px;
+            }
+
+            /* モバイル版でもドレス衣装の位置調整 */
+            .event-selection-item[data-event="dress"] img {
+                object-position: center 25%;
+            }
+
+            /* モバイル版でも5月衣装の位置調整 */
+            .event-selection-item[data-event="may"] img {
+                object-position: center 25%;
+            }
+
+            /* モバイル版でも10月衣装の位置調整 */
+            .event-selection-item[data-event="october"] img {
+                object-position: center 30%;
+            }
+
+            .group-photo-item img {
+                max-height: 300px;
+            }
+
+            .member-photos-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 1rem;
+                max-width: 100%;
+            }
+
+            .group-photo-section {
+                padding: 1rem;
+            }
+
+            .member-photo-item img {
+                height: 350px; /* モバイルでも縦長に */
+                object-fit: contain;
+                background-color: #f8f9fa;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .event-selection-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .member-photos-grid {
+                grid-template-columns: 1fr;
+                max-width: 100%;
+            }
+
+            .member-photo-item img {
+                height: 300px; /* 小さな画面でも縦長に */
+                object-fit: contain;
+                background-color: #f8f9fa;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- パステルカラーの装飾背景 -->
+    <div class="cute-background">
+        <div class="floating-hearts" id="floatingHearts"></div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <a href="index.html#gallery" class="back-button">
+        <i class="fas fa-arrow-left"></i> TOPページに戻る
+    </a>
+
+    <!-- メインコンテンツ -->
+    <div class="member-selection-page">
+        <div class="container">
+            <h1 class="page-title">＃あるあむビジュアルコレクション</h1>
+            
+            <!-- イベント選択グリッド -->
+            <div class="event-selection-grid" id="eventGrid">
+                <div class="event-selection-item" data-event="predebut">
+                    <img src="Photo/group/predebut.webp" alt="プレデビュー衣装">
+                    <h3>プレデビュー衣装</h3>
+                </div>
+               
+                <div class="event-selection-item" data-event="february">
+                    <img src="Photo/group/february_2025.webp" alt="2月衣装">
+                    <h3>2025年 2月</h3>
+               
+                </div>
+                <div class="event-selection-item" data-event="debut">
+                    <img src="Photo/group/debut.webp" alt="デビュー衣装">
+                    <h3>デビュー衣装</h3>
+               
+                </div>
+                <div class="event-selection-item" data-event="march">
+                    <img src="Photo/group/march_2025.webp" alt="3月衣装">
+                    <h3>2025年 3月</h3>
+                 
+                </div>
+                <div class="event-selection-item" data-event="april">
+                    <img src="Photo/group/april_2025.webp" alt="4月衣装">
+                    <h3>2025年 4月</h3>
+             
+                </div>
+                <div class="event-selection-item" data-event="polkadot">
+                    <img src="Photo/group/PolkadottDress.webp" alt="水玉衣装">
+                    <h3>水玉衣装</h3>
+              
+                </div>
+                <div class="event-selection-item" data-event="may">
+                    <img src="Photo/group/may_2025.webp" alt="5月衣装">
+                    <h3>2025年 5月</h3>
+                   
+                </div>
+                <div class="event-selection-item" data-event="june">
+                    <img src="Photo/group/june_2025.webp" alt="6月衣装">
+                    <h3>2025年 6月</h3>
+             
+                </div>
+                <div class="event-selection-item" data-event="dress">
+                    <img src="Photo/group/dress.webp" alt="ドレス衣装">
+                    <h3>ドレス衣装</h3>
+                  
+                </div>
+                <div class="event-selection-item" data-event="july">
+                    <img src="Photo/group/july_2025.webp" alt="7月衣装">
+                    <h3>2025年 7月</h3>
+              
+                </div>
+                <div class="event-selection-item" data-event="august">
+                    <img src="Photo/group/august_2025.webp" alt="8月衣装">
+                    <h3>2025年 8月</h3>
+                   
+                </div>
+                <div class="event-selection-item" data-event="september">
+                    <img src="Photo/group/september_2025.webp" alt="9月衣装">
+                    <h3>2025年 9月</h3>
+                   
+                </div>
+                <div class="event-selection-item" data-event="october">
+                    <img src="Photo/group/october_2025.webp" alt="10月衣装">
+                    <h3>2025年 10月</h3>
+                   
+                </div>
+               
+               
+            </div>
+
+            <!-- 個人写真表示セクション -->
+            <div class="member-photos-section" id="memberPhotosSection">
+                <button class="back-to-events-btn" onclick="showEventGrid()">
+                    <i class="fas fa-arrow-left"></i> ＃あるあむビジュアルコレクションに戻る
+                </button>
+                <h3 id="eventTitle">個人写真</h3>
+                <div class="member-photos-grid" id="memberPhotosGrid">
+                    <!-- 個人写真がここに動的に挿入されます -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- モーダル -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div id="modalCaption" class="modal-caption"></div>
+    </div>
+
+    <script>
+        // イベント別の個人写真データ
+        const eventPhotos = {
+            'predebut': {
+                'グループ写真': 'Photo/group/predebut.webp',
+                '有ゆうな': 'Photo/yuuna/1.PreDress.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/1_PreDress_kana.webp',
+                'やや': 'Photo/yaya/1_PreDress_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/1_PreDress_yuka.webp'
+                
+                
+            },
+            'debut': {
+                'グループ写真': 'Photo/group/debut.webp',
+                '有ゆうな': 'Photo/yuuna/3.debutDress.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/3_debutDress_kana.webp',
+                'やや': 'Photo/yaya/3_debutDress_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/3_debutdress_yuka.webp'
+            },
+            'february': {
+                'グループ写真': 'Photo/group/february_2025.webp',
+                '有ゆうな': 'Photo/yuuna/2.Feburualy.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/2_Feburualy_kana.webp',
+                'やや': 'Photo/yaya/2_Feburualy_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/2_Feburualy_yuka.webp'
+               
+            },
+            'march': {
+                'グループ写真': 'Photo/group/march_2025.webp',
+                '有ゆうな': 'Photo/yuuna/4.March.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/4_March_kana.webp',
+                'やや': 'Photo/yaya/4_March_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/4_March_yuka.webp'
+                
+            },
+            'april': {
+                'グループ写真': 'Photo/group/april_2025.webp',
+                '有ゆうな': 'Photo/yuuna/5.April.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/5_April_Kana.webp',
+                'やや': 'Photo/yaya/5_April_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/5_April_yuka.webp'
+               
+            },
+            'may': {
+                'グループ写真': 'Photo/group/may_2025.webp',
+                '有ゆうな': 'Photo/yuuna/7.May.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/7_May_Kana.webp',
+                'やや': 'Photo/yaya/7_May_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/7_May_yuka.webp'
+            },
+            'june': {
+                'グループ写真': 'Photo/group/june_2025.webp',
+                '有ゆうな': 'Photo/yuuna/8.June.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/8_June_kana.webp',
+                'やや': 'Photo/yaya/8_June_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/8_June_yuka.webp'
+                
+            },
+            'july': {
+                'グループ写真': 'Photo/group/july_2025.webp',
+                '有ゆうな': 'Photo/yuuna/10.July.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/10_July_kana.webp',
+                'やや': 'Photo/yaya/10_July_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/10_July_yuka.webp'
+            },
+            'august': {
+                'グループ写真': 'Photo/group/august_2025.webp',
+                '有ゆうな': 'Photo/yuuna/11.August.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/11_August_kana.webp',
+                'やや': 'Photo/yaya/11_August_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/11_August_yuka.webp'
+                
+            },
+            'september': {
+                'グループ写真': 'Photo/group/september_2025.webp',
+                '有ゆうな': 'Photo/yuuna/12.September.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/12_September_kana.webp',
+                'やや': 'Photo/yaya/12_September_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/12_September_yuka.webp'
+                
+                
+            },
+            'dress': {
+                'グループ写真': 'Photo/group/dress.webp',
+                '有ゆうな': 'Photo/yuuna/9_dress_yuuna.webp',
+                '華本かな': 'Photo/hanamoto/9_dress_kana.webp',
+                'やや': 'Photo/yaya/9_dress_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/9_dress_yuka.webp'
+                
+            },
+            'polkadot': {
+                'グループ写真': 'Photo/group/PolkadottDress.webp',
+                '有ゆうな': 'Photo/yuuna/6.PolkadottDress.yuuna.webp',
+                '華本かな': 'Photo/hanamoto/6_PolkadottDress_kana.webp',
+                'やや': 'Photo/yaya/6_PolkadottDress_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/6_polkadottdress_yuka.webp'
+            },
+            'october': {
+                'グループ写真': 'Photo/group/october_2025.webp',
+                '有ゆうな': 'Photo/yuuna/13_October_yuuna.webp',
+                '華本かな': 'Photo/hanamoto/13_October_kana.webp',
+                'やや': 'Photo/yaya/13_October_yaya.webp',
+                '宇野木ゆか': 'Photo/unoki/13_October_unoki.webp'
+        
+                
+            }
+        };
+
+        // イベント名の日本語マッピング
+        const eventNames = {
+            'predebut': 'プレデビュー衣装',
+            'debut': 'デビュー衣装',
+            'february': '2月衣装',
+            'march': '3月衣装',
+            'april': '4月衣装',
+            'may': '5月衣装',
+            'june': '6月衣装',
+            'july': '7月衣装',
+            'august': '8月衣装',
+            'september': '9月衣装',
+            'dress': 'ドレス衣装',
+            'polkadot': '水玉衣装'
+        };
+
+        // 浮遊するハートと星を生成
+        function createFloatingElements() {
+            const container = document.getElementById('floatingHearts');
+            const symbols = ['💖', '🧡', '💛', '💝', '⭐', '🩵', '🌟', '✨'];
+            
+            for (let i = 0; i < 20; i++) {
+                const element = document.createElement('div');
+                element.className = Math.random() < 0.5 ? 'heart' : (Math.random() < 0.7 ? 'star' : 'sparkle');
+                element.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                element.style.left = Math.random() * 100 + '%';
+                element.style.top = Math.random() * 100 + '%';
+                element.style.animationDelay = Math.random() * 6 + 's';
+                element.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                container.appendChild(element);
+            }
+        }
+
+        // イベント選択時の個人写真表示
+        function showMemberPhotos(eventId) {
+            const eventGrid = document.getElementById('eventGrid');
+            const memberPhotosSection = document.getElementById('memberPhotosSection');
+            const eventTitle = document.getElementById('eventTitle');
+            const memberPhotosGrid = document.getElementById('memberPhotosGrid');
+
+            // イベント名を設定
+            eventTitle.textContent = eventNames[eventId] 
+
+            // 写真を生成
+            const photos = eventPhotos[eventId];
+            memberPhotosGrid.innerHTML = '';
+
+            // グループ写真を最初に表示
+            const groupPhotoPath = photos['グループ写真'];
+            const groupPhotoItem = document.createElement('div');
+            groupPhotoItem.className = 'member-photo-item group-photo-item';
+            groupPhotoItem.innerHTML = `
+                <img src="${groupPhotoPath}" alt="グループ写真">
+                <div class="member-photo-overlay">
+                    <h4>グループ写真</h4>
+                    <i class="fas fa-users"></i>
+                </div>
+            `;
+            memberPhotosGrid.appendChild(groupPhotoItem);
+
+            // 個人写真を表示（グループ写真以外）
+            Object.keys(photos).forEach(memberName => {
+                if (memberName !== 'グループ写真') {
+                    const photoPath = photos[memberName];
+                    const photoItem = document.createElement('div');
+                    photoItem.className = 'member-photo-item';
+                    photoItem.innerHTML = `
+                        <img src="${photoPath}" alt="${memberName}">
+                        <div class="member-photo-overlay">
+                            <h4>${memberName}</h4>
+                            <i class="fas fa-search-plus"></i>
+                        </div>
+                    `;
+                    memberPhotosGrid.appendChild(photoItem);
+                }
+            });
+
+            // イベントグリッドを非表示、個人写真セクションを表示
+            eventGrid.style.display = 'none';
+            memberPhotosSection.classList.add('active');
+
+            // ページのトップにスクロール
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+
+            // モーダルイベントを設定
+            setupModalEvents();
+        }
+
+        // イベントグリッドを表示
+        function showEventGrid() {
+            const eventGrid = document.getElementById('eventGrid');
+            const memberPhotosSection = document.getElementById('memberPhotosSection');
+
+            eventGrid.style.display = 'grid';
+            memberPhotosSection.classList.remove('active');
+
+            // ページのトップにスクロール
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        }
+
+        // モーダルイベントの設定
+        function setupModalEvents() {
+            document.querySelectorAll('.member-photo-item').forEach(item => {
+                const img = item.querySelector('img');
+                const overlay = item.querySelector('.member-photo-overlay');
+                
+                [img, overlay].forEach(element => {
+                    element.addEventListener('click', () => {
+                        const modal = document.getElementById('imageModal');
+                        const modalImg = document.getElementById('modalImage');
+                        const modalCaption = document.getElementById('modalCaption');
+                        
+                        modal.style.display = 'block';
+                        modalImg.src = img.src;
+                        modalCaption.innerHTML = `
+                            <h3>${overlay.querySelector('h4').textContent}</h3>
+                        `;
+                        document.body.style.overflow = 'hidden';
+                    });
+                });
+            });
+        }
+
+        // モーダルを閉じる
+        function closeModal() {
+            document.getElementById('imageModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+
+        // ページ読み込み時の初期化
+        window.addEventListener('load', () => {
+            createFloatingElements();
+
+            // イベント選択イベント
+            document.querySelectorAll('.event-selection-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const eventId = item.getAttribute('data-event');
+                    showMemberPhotos(eventId);
+                });
+            });
+
+            // モーダルイベント
+            document.querySelector('.close').addEventListener('click', closeModal);
+            
+            document.getElementById('imageModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('imageModal')) {
+                    closeModal();
+                }
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && document.getElementById('imageModal').style.display === 'block') {
+                    closeModal();
+                }
+            });
+        });
+    </script>
+</body>
+</html>

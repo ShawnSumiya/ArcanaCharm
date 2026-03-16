@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArcanaCharm - 全写真ギャラリー</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Mochiy+Pop+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* パステルカラーのグラデーション背景 */
+        .cute-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            background: linear-gradient(135deg, 
+                #ffeaa7 0%,     /* パステルイエロー */
+                #fab1a0 25%,    /* パステルオレンジ */
+                #fd79a8 50%,    /* パステルピンク */
+                #e17055 75%,    /* パステルコーラル */
+                #74b9ff 100%    /* パステルブルー */
+            );
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            overflow: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .floating-hearts {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        .heart {
+            position: absolute;
+            color: #ff69b4;
+            font-size: 20px;
+            animation: float 6s ease-in-out infinite;
+            opacity: 0.7;
+        }
+
+        .star {
+            position: absolute;
+            color: #ffd700;
+            font-size: 15px;
+            animation: twinkle 3s ease-in-out infinite;
+            opacity: 0.8;
+        }
+
+        .sparkle {
+            position: absolute;
+            color: #fff;
+            font-size: 12px;
+            animation: sparkle 2s ease-in-out infinite;
+            opacity: 0.9;
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0px) rotate(0deg);
+                opacity: 0.7;
+            }
+            50% {
+                transform: translateY(-20px) rotate(180deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes twinkle {
+            0%, 100% {
+                opacity: 0.3;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.2);
+            }
+        }
+
+        @keyframes sparkle {
+            0%, 100% {
+                opacity: 0.5;
+                transform: scale(0.8) rotate(0deg);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.1) rotate(180deg);
+            }
+        }
+
+        .gallery-all-page {
+            min-height: 100vh;
+            padding-top: 100px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .page-title {
+            text-align: center;
+            font-size: 3rem;
+            color: #fb83f5;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(255, 105, 180, 0.3);
+            position: relative;
+            -webkit-text-stroke: 2px #fcaef7;
+            font-family: 'Mochiy Pop One', cursive;
+        }
+
+        .page-title::before {
+            content: '💖';
+            position: absolute;
+            top: -20px;
+            left: -40px;
+            font-size: 2rem;
+            animation: heartBeat 2s ease-in-out infinite;
+        }
+
+        .page-title::after {
+            content: '✨';
+            position: absolute;
+            top: -15px;
+            right: -35px;
+            font-size: 1.5rem;
+            animation: sparkle 1.5s ease-in-out infinite;
+        }
+
+        @keyframes heartBeat {
+            0%, 100% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+        }
+
+        .back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 105, 180, 0.9);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+        }
+
+        .back-button:hover {
+            background: rgba(255, 105, 180, 1);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 105, 180, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+
+        .all-gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+            padding: 0 20px;
+        }
+
+        .all-gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(255, 105, 180, 0.2);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            background: white;
+            border: 3px solid transparent;
+            background-clip: padding-box;
+        }
+
+        .all-gallery-item:hover {
+            transform: translateY(-15px) scale(1.02);
+            box-shadow: 0 25px 50px rgba(255, 105, 180, 0.3);
+            border-color: #ff69b4;
+        }
+
+        .all-gallery-item img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+
+        .all-gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .all-gallery-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 105, 180, 0.8), rgba(255, 182, 193, 0.8));
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .all-gallery-item:hover .all-gallery-overlay {
+            opacity: 1;
+        }
+
+        .all-gallery-overlay h3 {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .all-gallery-overlay p {
+            margin-bottom: 1rem;
+            opacity: 0.9;
+        }
+
+        .all-gallery-overlay i {
+            font-size: 2rem;
+        }
+
+        /* レスポンシブ対応 */
+        @media (max-width: 768px) {
+            .page-title {
+                font-size: 2rem;
+            }
+            
+            .all-gallery-grid {
+                grid-template-columns: 1fr;
+                padding: 0 15px;
+            }
+            
+            .all-gallery-item img {
+                height: 300px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- パステルカラーの装飾背景 -->
+    <div class="cute-background">
+        <div class="floating-hearts" id="floatingHearts"></div>
+    </div>
+
+    <!-- 戻るボタン -->
+    <a href="index.html#gallery" class="back-button">
+        <i class="fas fa-arrow-left"></i> メインギャラリーに戻る
+    </a>
+
+    <!-- メインコンテンツ -->
+    <div class="gallery-all-page">
+        <div class="container">
+            <h1 class="page-title">すべての写真</h1>
+            <div class="all-gallery-grid">
+                <!-- グループ写真1 -->
+                <div class="all-gallery-item" data-category="group">
+                    <img src="Photo/group_image.jpeg" alt="グループ写真">
+                    <div class="all-gallery-overlay">
+                        <h3>グループ写真</h3>
+                        <p>みんなで一緒に</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+                
+                <!-- グループ写真2（ドレス） -->
+                <div class="all-gallery-item" data-category="group">
+                    <img src="Photo/yuuna/1.PreDress.yuuna.webp" alt="ゆうなドレス">
+                    <div class="all-gallery-overlay">
+                        <h3>グループ写真（ドレス）</h3>
+                        <p>エレガントなドレス姿</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 個人写真1 -->
+                <div class="all-gallery-item" data-category="individual">
+                    <img src="Photo/yuuna/9_dress_yuuna.webp" alt="有ゆうな">
+                    <div class="all-gallery-overlay">
+                        <h3>有ゆうな</h3>
+                        <p>リーダー・ボーカル</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 個人写真2 -->
+                <div class="all-gallery-item" data-category="individual">
+                    <img src="Photo/hanamoto/hanamoto_dress.jpeg" alt="華本かな">
+                    <div class="all-gallery-overlay">
+                        <h3>華本かな</h3>
+                        <p>ダンス・パフォーマー</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 個人写真3 -->
+                <div class="all-gallery-item" data-category="individual">
+                    <img src="Photo/yaya/yaya_dress.jpeg" alt="やや">
+                    <div class="all-gallery-overlay">
+                        <h3>やや</h3>
+                        <p>ボーカル・ダンス</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- ライブ写真1 -->
+                <div class="all-gallery-item" data-category="live">
+                    <img src="Photo/LIVE/LIVE.jpeg" alt="ライブ写真">
+                    <div class="all-gallery-overlay">
+                        <h3>ライブパフォーマンス</h3>
+                        <p>ステージでの輝き</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- ライブ写真2 -->
+                <div class="all-gallery-item" data-category="live">
+                    <img src="Photo/LIVE/YUMENOHANASHI LIVE 0914.jpeg" alt="夢のはなしライブ">
+                    <div class="all-gallery-overlay">
+                        <h3>夢のはなしライブ</h3>
+                        <p>2024年9月14日</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- 舞台裏写真 -->
+                <div class="all-gallery-item" data-category="behind">
+                    <img src="Photo/宇野木ゆか/6.PolkadottDress.yuka.jpeg" alt="生誕祭">
+                    <div class="all-gallery-overlay">
+                        <h3>生誕祭</h3>
+                        <p>宇野木ゆか生誕祭</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+
+                <!-- IDOL SPIRITS -->
+                <div class="all-gallery-item" data-category="group">
+                    <img src="Photo/idol_spirits.webp" alt="IDOL SPIRITS">
+                    <div class="all-gallery-overlay">
+                        <h3>IDOL SPIRITS</h3>
+                        <p>2024年撮影</p>
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 画像拡大モーダル -->
+    <div id="imageModal" class="modal">
+        <span class="close">&times;</span>
+        <img class="modal-content" id="modalImage">
+        <div class="modal-caption" id="modalCaption"></div>
+    </div>
+
+    <script>
+        // 浮遊するハートと星を生成
+        function createFloatingElements() {
+            const container = document.getElementById('floatingHearts');
+            const symbols = ['💖', '🧡', '🎀', '💝', '⭐', '🩵', '🌟', '💫'];
+            
+            for (let i = 0; i < 20; i++) {
+                const element = document.createElement('div');
+                element.className = Math.random() < 0.5 ? 'heart' : (Math.random() < 0.7 ? 'star' : 'sparkle');
+                element.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+                element.style.left = Math.random() * 100 + '%';
+                element.style.top = Math.random() * 100 + '%';
+                element.style.animationDelay = Math.random() * 6 + 's';
+                element.style.animationDuration = (Math.random() * 4 + 3) + 's';
+                container.appendChild(element);
+            }
+        }
+
+        // 画像クリック時のモーダル表示
+        document.querySelectorAll('.all-gallery-item').forEach(item => {
+            const img = item.querySelector('img');
+            const overlay = item.querySelector('.all-gallery-overlay');
+            
+            [img, overlay].forEach(element => {
+                element.addEventListener('click', () => {
+                    const modal = document.getElementById('imageModal');
+                    const modalImg = document.getElementById('modalImage');
+                    const modalCaption = document.getElementById('modalCaption');
+                    
+                    modal.style.display = 'block';
+                    modalImg.src = img.src;
+                    modalCaption.innerHTML = `
+                        <h3>${overlay.querySelector('h3').textContent}</h3>
+                        <p>${overlay.querySelector('p').textContent}</p>
+                    `;
+                    document.body.style.overflow = 'hidden';
+                });
+            });
+        });
+
+        // モーダルを閉じる
+        document.querySelector('.close').addEventListener('click', () => {
+            document.getElementById('imageModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        });
+
+        // モーダル外クリックで閉じる
+        document.getElementById('imageModal').addEventListener('click', (e) => {
+            if (e.target === document.getElementById('imageModal')) {
+                document.getElementById('imageModal').style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // ESCキーでモーダルを閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && document.getElementById('imageModal').style.display === 'block') {
+                document.getElementById('imageModal').style.display = 'none';
+                document.body.style.overflow = 'auto';
+            }
+        });
+
+        // ページ読み込み時に浮遊要素を生成
+        window.addEventListener('load', createFloatingElements);
+    </script>
+</body>
+</html>
