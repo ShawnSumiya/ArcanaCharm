@@ -1,0 +1,5 @@
+.env
+.env.*
+.vercel
+members-cms.test.mjs
+MEMBERS_CMS.md
