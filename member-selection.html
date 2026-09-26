@@ -154,15 +154,24 @@
             position: fixed;
             top: 20px;
             left: 20px;
+            max-width: calc(100vw - 40px);
+            box-sizing: border-box;
             background: rgba(255, 105, 180, 0.9);
             color: white;
             padding: 10px 20px;
             border-radius: 25px;
             text-decoration: none;
             font-weight: 500;
+            line-height: 1.35;
+            white-space: normal;
             transition: all 0.3s ease;
             z-index: 1000;
             box-shadow: 0 4px 15px rgba(255, 105, 180, 0.3);
+        }
+
+        .back-button--to-collection {
+            font-size: 0.9rem;
+            padding: 8px 14px;
         }
 
         .back-button:hover {
@@ -513,6 +522,14 @@
         }
 
         @media (max-width: 480px) {
+            .back-button--to-collection {
+                top: 10px;
+                left: 10px;
+                max-width: calc(100vw - 20px);
+                font-size: 0.78rem;
+                padding: 8px 12px;
+            }
+
             .event-selection-grid {
                 grid-template-columns: 1fr;
             }
@@ -537,8 +554,8 @@
     </div>
 
     <!-- 戻るボタン -->
-    <a href="index.html#gallery" class="back-button">
-        <i class="fas fa-arrow-left"></i> TOPページに戻る
+    <a href="index.html#gallery" class="back-button" id="fixedBackButton">
+        <i class="fas fa-arrow-left"></i> <span id="fixedBackLabel">TOPページに戻る</span>
     </a>
 
     <!-- メインコンテンツ -->
@@ -619,7 +636,7 @@
 
             <!-- 個人写真表示セクション -->
             <div class="member-photos-section" id="memberPhotosSection">
-                <button class="back-to-events-btn" onclick="showEventGrid()">
+                <button type="button" class="back-to-events-btn" id="backToCollectionBtn">
                     <i class="fas fa-arrow-left"></i> ＃あるあむビジュアルコレクションに戻る
                 </button>
                 <h3 id="eventTitle">個人写真</h3>
@@ -637,6 +654,7 @@
         <div id="modalCaption" class="modal-caption"></div>
     </div>
 
+    <script src="visual-collection-nav.js"></script>
     <script>
         // イベント別の個人写真データ
         const eventPhotos = {
@@ -826,29 +844,99 @@
             eventGrid.style.display = 'none';
             memberPhotosSection.classList.add('active');
 
-            // ページのトップにスクロール
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
+            window.scrollTo(0, 0);
 
             // モーダルイベントを設定
             setupModalEvents();
         }
 
         // イベントグリッドを表示
-        function showEventGrid() {
+        function showEventGrid(scrollY) {
             const eventGrid = document.getElementById('eventGrid');
             const memberPhotosSection = document.getElementById('memberPhotosSection');
 
+            if (document.getElementById('imageModal').style.display === 'block') {
+                closeModal();
+            }
             eventGrid.style.display = 'grid';
             memberPhotosSection.classList.remove('active');
 
-            // ページのトップにスクロール
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
+            const y = Number.isFinite(scrollY) ? scrollY : 0;
+            requestAnimationFrame(() => {
+                window.scrollTo(0, y);
             });
+        }
+
+        function costumeIds() {
+            return Object.keys(eventPhotos);
+        }
+
+        function syncFixedButton() {
+            const model = VisualCollectionNav.fixedButtonModel(history.state);
+            const button = document.getElementById('fixedBackButton');
+            const label = document.getElementById('fixedBackLabel');
+            label.textContent = model.label;
+            button.setAttribute('href', model.href);
+            button.classList.toggle('back-button--to-collection', Boolean(history.state && history.state.view === 'detail'));
+        }
+
+        function renderHistoryView(view) {
+            if (view.view === 'detail') {
+                showMemberPhotos(view.eventId);
+            } else {
+                showEventGrid(view.scrollY);
+            }
+            syncFixedButton();
+        }
+
+        function ensureHistoryState(view) {
+            if (view.view === 'detail') {
+                if (!history.state || history.state.view !== 'detail' || history.state.eventId !== view.eventId) {
+                    history.replaceState(
+                        VisualCollectionNav.detailState(view.eventId, false),
+                        '',
+                        VisualCollectionNav.detailUrl(view.eventId)
+                    );
+                }
+                return;
+            }
+            if (!history.state || history.state.view !== 'collection') {
+                history.replaceState(
+                    VisualCollectionNav.collectionState(view.scrollY || 0),
+                    '',
+                    VisualCollectionNav.COLLECTION_URL
+                );
+            }
+        }
+
+        function openCostumeDetail(eventId) {
+            if (!VisualCollectionNav.isKnownCostume(eventId, costumeIds())) {
+                return;
+            }
+            const scrollY = window.scrollY;
+            history.replaceState(
+                VisualCollectionNav.collectionState(scrollY),
+                '',
+                VisualCollectionNav.COLLECTION_URL
+            );
+            history.pushState(
+                VisualCollectionNav.detailState(eventId, true),
+                '',
+                VisualCollectionNav.detailUrl(eventId)
+            );
+            renderHistoryView(VisualCollectionNav.viewForState(history.state, location.search, costumeIds()));
+        }
+
+        function returnToCollection(event) {
+            if (event) {
+                event.preventDefault();
+            }
+            const action = VisualCollectionNav.collectionReturnAction(history.state);
+            if (action.type === 'history-back') {
+                history.back();
+                return;
+            }
+            window.location.assign(action.url);
         }
 
         // モーダルイベントの設定
@@ -880,17 +968,48 @@
             document.body.style.overflow = 'auto';
         }
 
-        // ページ読み込み時の初期化
-        window.addEventListener('load', () => {
-            createFloatingElements();
+        function initVisualCollectionNavigation() {
+            if ('scrollRestoration' in history) {
+                history.scrollRestoration = 'manual';
+            }
 
-            // イベント選択イベント
+            const view = VisualCollectionNav.viewForState(history.state, location.search, costumeIds());
+            ensureHistoryState(view);
+            renderHistoryView(view);
+
             document.querySelectorAll('.event-selection-item').forEach(item => {
                 item.addEventListener('click', () => {
-                    const eventId = item.getAttribute('data-event');
-                    showMemberPhotos(eventId);
+                    openCostumeDetail(item.getAttribute('data-event'));
                 });
             });
+
+            document.getElementById('backToCollectionBtn').addEventListener('click', returnToCollection);
+            document.getElementById('fixedBackButton').addEventListener('click', (event) => {
+                const model = VisualCollectionNav.fixedButtonModel(history.state);
+                if (model.useHistoryBack) {
+                    event.preventDefault();
+                    history.back();
+                }
+            });
+
+            window.addEventListener('popstate', () => {
+                renderHistoryView(VisualCollectionNav.viewForState(history.state, location.search, costumeIds()));
+            });
+
+            window.addEventListener('pagehide', () => {
+                if (history.state && history.state.view === 'collection') {
+                    history.replaceState(
+                        VisualCollectionNav.collectionState(window.scrollY),
+                        '',
+                        VisualCollectionNav.COLLECTION_URL
+                    );
+                }
+            });
+        }
+
+        // ページ読み込み時の初期化
+        window.addEventListener('DOMContentLoaded', () => {
+            initVisualCollectionNavigation();
 
             // モーダルイベント
             document.querySelector('.close').addEventListener('click', closeModal);
@@ -906,6 +1025,10 @@
                     closeModal();
                 }
             });
+        });
+
+        window.addEventListener('load', () => {
+            createFloatingElements();
         });
     </script>
 </body>
