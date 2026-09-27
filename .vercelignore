@@ -2,4 +2,6 @@
 .env.*
 .vercel
 members-cms.test.mjs
+gallery-cms.test.mjs
+visual-collection-nav.test.mjs
 MEMBERS_CMS.md

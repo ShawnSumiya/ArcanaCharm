@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "test": "node --test members-cms.test.mjs"
+    "test": "node --test members-cms.test.mjs gallery-cms.test.mjs visual-collection-nav.test.mjs"
   },
   "dependencies": {
     "microcms-js-sdk": "^3.2.0"

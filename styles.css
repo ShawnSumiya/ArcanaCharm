@@ -818,6 +818,19 @@ body {
     }
 }
 
+/* CMSが公開写真なしを返したとき、写真専用のモバイル案内を残さない */
+.gallery-grid.gallery-cms-photo-hidden {
+    min-height: 0;
+}
+
+.gallery-grid.gallery-cms-photo-hidden::after,
+.gallery-grid.gallery-cms-photo-hidden:hover::after {
+    content: none;
+    display: none;
+    animation: none;
+    opacity: 0;
+}
+
 /* メンバー個別画像のスタイル */
 .member-gallery-item {
     position: relative;
