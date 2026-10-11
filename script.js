@@ -167,55 +167,6 @@ window.addEventListener('scroll', () => {
     }
 });
 
-/// フォーム送信処理
-const contactForm = document.querySelector('.contact-form');
-if (contactForm) {
-	contactForm.addEventListener('submit', async (e) => {
-		e.preventDefault();
-
-		const formData = new FormData(contactForm);
-		const name = formData.get('name');
-		const email = formData.get('email');
-		const message = formData.get('message');
-
-		if (!name || !email || !message) {
-			alert('すべてのフィールドを入力してください。');
-			return;
-		}
-
-		// 送信ボタンを無効化して重複送信を防ぐ
-		const submitBtn = contactForm.querySelector('.submit-btn');
-		const originalText = submitBtn.textContent;
-		submitBtn.disabled = true;
-		submitBtn.textContent = '送信中...';
-
-		try {
-			// Formspreeへの送信
-			const response = await fetch('https://formspree.io/f/xblzygzb', {
-				method: 'POST',
-				headers: {
-					'Accept': 'application/json'
-				},
-				body: formData
-			});
-
-			if (response.ok) {
-				alert('お問い合わせありがとうございます！後ほど担当者よりご連絡いたします。');
-				contactForm.reset();
-			} else {
-				throw new Error('送信に失敗しました');
-			}
-		} catch (error) {
-			alert('送信に失敗しました。しばらく時間をおいて再度お試しください。');
-			console.error('Form submission error:', error);
-		} finally {
-			// ボタンを元に戻す
-			submitBtn.disabled = false;
-			submitBtn.textContent = originalText;
-		}
-	});
-}
-
 // アニメーション用のCSSを動的に追加
 const style = document.createElement('style');
 style.textContent = `

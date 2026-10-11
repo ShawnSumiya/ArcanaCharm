@@ -341,11 +341,40 @@
                         </a>
                     </div>
                 </div>
-                <form class="contact-form" id="contactForm" action="https://formspree.io/f/xblzygzb" method="POST">
-                    <input type="text" name="name" placeholder="お名前" required>
-                    <input type="email" name="email" placeholder="メールアドレス" required>
-                    <textarea name="message" placeholder="メッセージ" rows="5" required></textarea>
-                    <input type="hidden" name="_subject" value="【ArcanaCharm】Webお問い合わせ">
+                <form class="contact-form" id="contactForm" method="post" novalidate>
+                    <noscript>
+                        <p class="contact-noscript">お問い合わせフォームの送信にはJavaScriptが必要です。SNSからもお問い合わせいただけます。</p>
+                    </noscript>
+                    <div class="contact-field">
+                        <label for="contact-name">お名前</label>
+                        <input type="text" id="contact-name" name="name" placeholder="お名前" autocomplete="name" maxlength="100" required aria-describedby="contact-name-error">
+                        <p id="contact-name-error" class="contact-field-error" hidden></p>
+                    </div>
+                    <div class="contact-field">
+                        <label for="contact-email">メールアドレス</label>
+                        <input type="email" id="contact-email" name="email" placeholder="メールアドレス" autocomplete="email" inputmode="email" maxlength="254" required aria-describedby="contact-email-error">
+                        <p id="contact-email-error" class="contact-field-error" hidden></p>
+                    </div>
+                    <div class="contact-field">
+                        <label for="contact-subject">お問い合わせ内容</label>
+                        <select id="contact-subject" name="subject" required aria-describedby="contact-subject-error">
+                            <option value="" disabled selected>お問い合わせ内容を選択してください</option>
+                            <option value="appearance">出演依頼</option>
+                            <option value="business">お仕事のご相談</option>
+                            <option value="fan">ファンレター・応援</option>
+                            <option value="other">その他</option>
+                        </select>
+                        <p id="contact-subject-error" class="contact-field-error" hidden></p>
+                    </div>
+                    <div class="contact-field">
+                        <label for="contact-message">メッセージ</label>
+                        <textarea id="contact-message" name="message" placeholder="メッセージ" rows="5" maxlength="5000" required aria-describedby="contact-message-error"></textarea>
+                        <p id="contact-message-error" class="contact-field-error" hidden></p>
+                    </div>
+                    <div class="contact-honeypot" aria-hidden="true">
+                        <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true">
+                    </div>
+                    <p id="contact-status" class="contact-status" role="status" tabindex="-1" hidden></p>
                     <button type="submit" class="submit-btn">送信</button>
                 </form>
             </div>
@@ -370,6 +399,7 @@
 
     <script src="members-public-config.js"></script>
     <script src="script.js"></script>
+    <script src="contact-message.js"></script>
     <script src="members-cms.js"></script>
     <script src="gallery-cms.js"></script>
     <script src="about-cms.js"></script>

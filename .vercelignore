@@ -5,4 +5,5 @@ members-cms.test.mjs
 gallery-cms.test.mjs
 visual-collection-nav.test.mjs
 about-cms.test.mjs
+contact-message.test.mjs
 MEMBERS_CMS.md
