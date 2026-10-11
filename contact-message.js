@@ -249,7 +249,7 @@
   function showSuccess(form) {
     clearFieldErrors(form);
     if (typeof form.reset === "function") form.reset();
-    const company = form.querySelector('[name="company"]');
+    const company = form.querySelector("#contactCompany");
     if (company) company.value = "";
     showStatus(form, "success", SUCCESS_MESSAGE);
   }
@@ -275,7 +275,7 @@
       email: read(FIELD_SELECTORS.email),
       subject: read(FIELD_SELECTORS.subject),
       message: read(FIELD_SELECTORS.message),
-      company: read('[name="company"]'),
+      company: read("#contactCompany"),
     };
   }
 

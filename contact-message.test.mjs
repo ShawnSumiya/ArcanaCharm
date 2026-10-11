@@ -76,7 +76,7 @@ function createHarness(initial = {}) {
     email: field("contact-email", { value: defaults.email }),
     subject: field("contact-subject", { value: defaults.subject }),
     message: field("contact-message", { value: defaults.message }),
-    company: field("", { value: defaults.company }),
+    company: field("contactCompany", { value: defaults.company }),
     nameError: field("contact-name-error", { hidden: true }),
     emailError: field("contact-email-error", { hidden: true }),
     subjectError: field("contact-subject-error", { hidden: true }),
@@ -99,7 +99,7 @@ function createHarness(initial = {}) {
     "#contact-message-error": fields.messageError,
     "#contact-status": fields.status,
     ".submit-btn": fields.button,
-    '[name="company"]': fields.company,
+    "#contactCompany": fields.company,
   };
   const listeners = [];
   const form = {
@@ -224,6 +224,29 @@ function contactHtml() {
   return { html, contact: html.slice(startAt, endAt) };
 }
 
+function contactFormMarkup() {
+  const { contact: section } = contactHtml();
+  const startAt = section.indexOf("<form");
+  const endAt = section.indexOf("</form>");
+  return section.slice(startAt, endAt);
+}
+
+function namedControls(formMarkup) {
+  return [...formMarkup.matchAll(/<(input|select|textarea|button)\b[^>]*>/gi)]
+    .map((match) => attributes(match[0]))
+    .filter((attrs) => Object.hasOwn(attrs, "name"));
+}
+
+function nativeGetQuery(formMarkup, valuesById) {
+  const params = new URLSearchParams();
+  for (const attrs of namedControls(formMarkup)) {
+    if (Object.hasOwn(attrs, "disabled")) continue;
+    const value = Object.hasOwn(valuesById, attrs.id) ? valuesById[attrs.id] : attrs.value || "";
+    params.append(attrs.name, value);
+  }
+  return params.toString();
+}
+
 function openingTag(source, id) {
   const match = source.match(new RegExp(`<[a-z]+[^>]*id="${id}"[^>]*>`, "i"));
   assert.ok(match, id);
@@ -273,7 +296,7 @@ describe("contact form markup", () => {
     assert.match(section, /<label for="contact-message">メッセージ<\/label>/);
 
     const name = attributes(openingTag(section, "contact-name"));
-    assert.equal(name.name, "name");
+    assert.equal(Object.hasOwn(name, "name"), false);
     assert.equal(name.type, "text");
     assert.equal(name.maxlength, "100");
     assert.equal(name.autocomplete, "name");
@@ -281,7 +304,7 @@ describe("contact form markup", () => {
     assert.equal(name["aria-describedby"], "contact-name-error");
 
     const email = attributes(openingTag(section, "contact-email"));
-    assert.equal(email.name, "email");
+    assert.equal(Object.hasOwn(email, "name"), false);
     assert.equal(email.type, "email");
     assert.equal(email.maxlength, "254");
     assert.equal(email.autocomplete, "email");
@@ -289,7 +312,7 @@ describe("contact form markup", () => {
     assert.equal(email.required, "");
 
     const subject = attributes(openingTag(section, "contact-subject"));
-    assert.equal(subject.name, "subject");
+    assert.equal(Object.hasOwn(subject, "name"), false);
     assert.equal(subject.required, "");
     assert.match(section, /<option value="" disabled selected>お問い合わせ内容を選択してください<\/option>/);
     assert.match(section, /<option value="appearance">出演依頼<\/option>/);
@@ -298,7 +321,7 @@ describe("contact form markup", () => {
     assert.match(section, /<option value="other">その他<\/option>/);
 
     const message = attributes(openingTag(section, "contact-message"));
-    assert.equal(message.name, "message");
+    assert.equal(Object.hasOwn(message, "name"), false);
     assert.equal(message.maxlength, "5000");
     assert.equal(message.required, "");
     assert.equal(message.rows, "5");
@@ -307,14 +330,15 @@ describe("contact form markup", () => {
   it("adds an offscreen honeypot and a noscript explanation", () => {
     const { contact: section } = contactHtml();
     const styles = readFileSync(new URL("./styles.css", import.meta.url), "utf8");
-    const company = section.match(/<input[^>]*name="company"[^>]*>/);
-    assert.ok(company);
-    const attrs = attributes(company[0]);
-    assert.equal(attrs.type, "text");
-    assert.equal(attrs.tabindex, "-1");
-    assert.equal(attrs.autocomplete, "off");
-    assert.equal(attrs["aria-hidden"], "true");
+    const company = attributes(openingTag(section, "contactCompany"));
+    assert.equal(company.type, "text");
+    assert.equal(company.id, "contactCompany");
+    assert.equal(Object.hasOwn(company, "name"), false);
+    assert.equal(company.tabindex, "-1");
+    assert.equal(company.autocomplete, "off");
+    assert.equal(company["aria-hidden"], "true");
     assert.equal(section.includes('for="contact-company"'), false);
+    assert.equal(section.includes('for="contactCompany"'), false);
     assert.match(section, /class="contact-honeypot"/);
     assert.match(section, /お問い合わせフォームの送信にはJavaScriptが必要です。SNSからもお問い合わせいただけます。/);
     assert.match(styles, /\.contact-honeypot\s*\{[^}]*position:\s*absolute/);
@@ -335,6 +359,36 @@ describe("contact form markup", () => {
     assert.ok(scripts.includes("members-cms.js"));
     assert.ok(scripts.includes("gallery-cms.js"));
     assert.ok(scripts.includes("about-cms.js"));
+  });
+});
+
+describe("native form safety", () => {
+  it("does not expose serializable names for personal fields", () => {
+    const form = contactFormMarkup();
+    for (const id of ["contact-name", "contact-email", "contact-subject", "contact-message", "contactCompany"]) {
+      const attrs = attributes(openingTag(form, id));
+      assert.equal(Object.hasOwn(attrs, "name"), false, id);
+    }
+    assert.equal(namedControls(form).length, 0);
+    const source = readFileSync(new URL("./contact-message.js", import.meta.url), "utf8");
+    assert.equal(source.includes("FormData"), false);
+    assert.equal(source.includes("#contactCompany"), true);
+  });
+
+  it("keeps personal values out of a native query string", () => {
+    const values = {
+      "contact-name": "山田花子",
+      "contact-email": "hanako@example.com",
+      "contact-subject": "business",
+      "contact-message": "これは秘密の本文です",
+      contactCompany: "Bot Inc",
+    };
+    const query = nativeGetQuery(contactFormMarkup(), values);
+    assert.equal(query, "");
+    for (const value of Object.values(values)) {
+      assert.equal(query.includes(value), false, value);
+      assert.equal(query.includes(encodeURIComponent(value)), false, value);
+    }
   });
 });
 
@@ -450,6 +504,28 @@ describe("contact rpc", () => {
     assert.equal(calls[0].url.includes(validFields.name), false);
     assert.equal(calls[0].url.includes(validFields.email), false);
     assert.equal(calls[0].url.includes("出演"), false);
+  });
+
+  it("still submits from the form submit event used by Enter", async () => {
+    const harness = createHarness();
+    const calls = [];
+    start(harness, async (_url, init) => {
+      calls.push(JSON.parse(init.body));
+      return jsonResponse(true);
+    });
+    fill(harness.fields, { ...validFields, company: "Bot" });
+    const event = submitEvent();
+    harness.form.dispatch(event);
+    const result = await event.contactTask;
+    assert.equal(event.defaultPrevented, true);
+    assert.equal(result.ok, true);
+    assert.deepEqual(calls, [{
+      p_name: validFields.name,
+      p_email: validFields.email,
+      p_subject: validFields.subject,
+      p_message: validFields.message,
+      p_company: "Bot",
+    }]);
   });
 
   it("accepts only boolean true", async () => {
