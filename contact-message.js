@@ -43,7 +43,16 @@
     subject: "#contact-subject-error",
     message: "#contact-message-error",
   };
-  const RPC_PATH = "/rest/v1/rpc/submit_contact_message_v1";
+  const RPC_PATH = "/rest/v1/rpc/submit_contact_message_v2";
+  const NOTIFICATION_TIMEOUT_MS = 8000;
+  const FORMSPREE_ENDPOINT = "https://formspree.io/f/xblzygzb";
+  const FORMSPREE_SUBJECT = "【ArcanaCharm】Webお問い合わせ";
+  const SUBJECT_LABELS = {
+    appearance: "出演依頼",
+    business: "お仕事のご相談",
+    fan: "ファンレター・応援",
+    other: "その他",
+  };
 
   function publicConfigIsSafe(config) {
     if (!config || typeof config !== "object") return false;
@@ -120,6 +129,26 @@
     console.warn("Contact submission failed");
   }
 
+  function warnNotification() {
+    console.warn("Contact notification failed");
+  }
+
+  function rpcStatus(body) {
+    if (body === "stored" || body === "ignored") return body;
+    return null;
+  }
+
+  function buildNotificationBody(fields) {
+    const body = new FormData();
+    body.append("name", fields.name);
+    body.append("email", fields.email);
+    body.append("message", fields.message);
+    body.append("_subject", FORMSPREE_SUBJECT);
+    const label = SUBJECT_LABELS[fields.subject];
+    if (typeof label === "string") body.append("お問い合わせ内容", label);
+    return body;
+  }
+
   async function submitContactMessage(config, fields, options = {}) {
     if (!publicConfigIsSafe(config)) return { ok: false, reason: "config" };
     const fetchImpl = options.fetchImpl || globalThis.fetch;
@@ -157,7 +186,33 @@
       } catch {
         return { ok: false, reason: "payload" };
       }
-      if (body !== true) return { ok: false, reason: "payload" };
+      const status = rpcStatus(body);
+      if (!status) return { ok: false, reason: "payload" };
+      return { ok: true, status };
+    } catch (error) {
+      if (error && error.name === "AbortError") return { ok: false, reason: "timeout" };
+      return { ok: false, reason: "network" };
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function notifyContactMessage(fields, options = {}) {
+    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    if (typeof fetchImpl !== "function") return { ok: false, reason: "config" };
+    const timeoutMs = options.notificationTimeoutMs || NOTIFICATION_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const response = await fetchImpl(FORMSPREE_ENDPOINT, {
+        method: "POST",
+        headers: {
+          Accept: "application/json",
+        },
+        body: buildNotificationBody(fields),
+        signal: controller.signal,
+      });
+      if (!response || response.ok !== true) return { ok: false, reason: "http" };
       return { ok: true };
     } catch (error) {
       if (error && error.name === "AbortError") return { ok: false, reason: "timeout" };
@@ -293,6 +348,7 @@
     }
     state.active = true;
     setSubmittingUi(form, true);
+    let acceptedStatus = null;
     try {
       const result = await submitContactMessage(resolveConfig(options), {
         name: validation.fields.name,
@@ -301,14 +357,31 @@
         message: validation.fields.message,
         company: normalized.company,
       }, options);
-      if (result.ok) {
-        showSuccess(form);
-        return { ok: true };
+      if (!result.ok || !rpcStatus(result.status)) {
+        warnFailure();
+        showFailure(form);
+        return { ok: false, reason: result.reason || "payload" };
       }
-      warnFailure();
-      showFailure(form);
-      return { ok: false, reason: result.reason };
+      acceptedStatus = result.status;
+      let notified = false;
+      if (result.status === "stored") {
+        const notice = await notifyContactMessage({
+          name: validation.fields.name,
+          email: validation.fields.email,
+          subject: validation.fields.subject,
+          message: validation.fields.message,
+        }, options);
+        notified = notice.ok === true;
+        if (!notified) warnNotification();
+      }
+      showSuccess(form);
+      return { ok: true, status: result.status, notified };
     } catch {
+      if (acceptedStatus) {
+        if (acceptedStatus === "stored") warnNotification();
+        showSuccess(form);
+        return { ok: true, status: acceptedStatus, notified: false };
+      }
       warnFailure();
       showFailure(form);
       return { ok: false, reason: "error" };
@@ -344,6 +417,10 @@
 
   return {
     FETCH_TIMEOUT_MS,
+    NOTIFICATION_TIMEOUT_MS,
+    FORMSPREE_ENDPOINT,
+    FORMSPREE_SUBJECT,
+    SUBJECT_LABELS,
     SUBJECT_CODES,
     SUCCESS_MESSAGE,
     FAILURE_MESSAGE,

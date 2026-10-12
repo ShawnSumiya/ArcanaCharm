@@ -370,8 +370,11 @@ describe("native form safety", () => {
       assert.equal(Object.hasOwn(attrs, "name"), false, id);
     }
     assert.equal(namedControls(form).length, 0);
+    assert.equal(/<form\b[^>]*\baction\s*=/i.test(form), false);
+    assert.equal(form.toLowerCase().includes("formspree"), false);
     const source = readFileSync(new URL("./contact-message.js", import.meta.url), "utf8");
-    assert.equal(source.includes("FormData"), false);
+    assert.equal(/new\s+FormData\s*\(\s*[A-Za-z_$]/.test(source), false);
+    assert.equal(source.includes("new FormData()"), true);
     assert.equal(source.includes("#contactCompany"), true);
   });
 
@@ -480,15 +483,18 @@ describe("contact rpc", () => {
     const calls = [];
     start(harness, async (url, init) => {
       calls.push({ url, init });
-      return jsonResponse(true);
+      return jsonResponse("stored");
     });
     fill(harness.fields, { ...validFields, company: "  Bot Co  " });
     const event = submitEvent();
     harness.form.dispatch(event);
     const result = await event.contactTask;
     assert.equal(result.ok, true);
-    assert.equal(calls.length, 1);
-    assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/submit_contact_message_v1");
+    assert.equal(result.status, "stored");
+    assert.equal(calls.length, 2);
+    assert.equal(calls[0].url, "https://example.supabase.co/rest/v1/rpc/submit_contact_message_v2");
+    assert.equal(calls[1].url, contact.FORMSPREE_ENDPOINT);
+    assert.equal(calls.some((call) => String(call.url).includes("submit_contact_message_v1")), false);
     assert.equal(calls[0].init.method, "POST");
     assert.equal(calls[0].init.headers.apikey, config.supabasePublishableKey);
     assert.equal(calls[0].init.headers.Authorization, `Bearer ${config.supabasePublishableKey}`);
@@ -509,9 +515,9 @@ describe("contact rpc", () => {
   it("still submits from the form submit event used by Enter", async () => {
     const harness = createHarness();
     const calls = [];
-    start(harness, async (_url, init) => {
-      calls.push(JSON.parse(init.body));
-      return jsonResponse(true);
+    start(harness, async (url, init) => {
+      if (String(url).includes("/rpc/submit_contact_message_v2")) calls.push(JSON.parse(init.body));
+      return jsonResponse("stored");
     });
     fill(harness.fields, { ...validFields, company: "Bot" });
     const event = submitEvent();
@@ -528,17 +534,45 @@ describe("contact rpc", () => {
     }]);
   });
 
-  it("accepts only boolean true", async () => {
-    for (const body of [false, null, "true", 1, { success: true }, [], "true\n"]) {
+  it("accepts only the stored and ignored strings", async () => {
+    for (const body of ["stored", "ignored"]) {
       const harness = createHarness();
-      start(harness, async () => jsonResponse(body));
+      let calls = 0;
+      start(harness, async (url) => {
+        calls += 1;
+        assert.equal(String(url).includes("submit_contact_message_v1"), false);
+        return jsonResponse(body);
+      });
+      fill(harness.fields);
+      const event = submitEvent();
+      harness.form.dispatch(event);
+      const result = await event.contactTask;
+      assert.equal(result.ok, true, body);
+      assert.equal(result.status, body);
+      assert.equal(harness.fields.status.textContent, contact.SUCCESS_MESSAGE);
+      assert.equal(harness.fields.name.value, "");
+      assert.equal(calls, body === "stored" ? 2 : 1, body);
+    }
+  });
+
+  it("rejects an unexpected rpc response without notifying", async () => {
+    for (const body of [true, false, null, "true", "stored\n", " stored", "STORED", "ignored ", { status: "stored" }, ["stored"], 1, ""]) {
+      const harness = createHarness();
+      const calls = [];
+      start(harness, async (url) => {
+        calls.push(String(url));
+        return jsonResponse(body);
+      });
       fill(harness.fields);
       const event = submitEvent();
       harness.form.dispatch(event);
       const result = await event.contactTask;
       assert.equal(result.ok, false, JSON.stringify(body));
+      assert.equal(result.reason, "payload");
       assert.equal(harness.fields.status.textContent, contact.FAILURE_MESSAGE);
       assert.equal(harness.fields.name.value, validFields.name);
+      assert.equal(calls.length, 1);
+      assert.equal(calls.some((url) => url === contact.FORMSPREE_ENDPOINT), false);
     }
   });
 
@@ -567,7 +601,7 @@ describe("contact submission state", () => {
     let calls = 0;
     let release;
     const pending = new Promise((resolve) => {
-      release = () => resolve(jsonResponse(true));
+      release = () => resolve(jsonResponse("stored"));
     });
     start(harness, () => {
       calls += 1;
@@ -592,7 +626,7 @@ describe("contact submission state", () => {
 
   it("resets the form and shows the fixed success copy", async () => {
     const harness = createHarness();
-    start(harness, async () => jsonResponse(true));
+    start(harness, async () => jsonResponse("stored"));
     fill(harness.fields, { ...validFields, message: "画面に出てはいけない本文", company: "Bot Inc" });
     const event = submitEvent();
     harness.form.dispatch(event);
@@ -710,7 +744,7 @@ describe("contact submission state", () => {
       config,
       fetchImpl: async () => {
         calls += 1;
-        return jsonResponse(true);
+        return jsonResponse("stored");
       },
     };
     assert.equal(contact.startContactForm(options).started, true);
@@ -719,7 +753,7 @@ describe("contact submission state", () => {
     const event = submitEvent();
     harness.form.dispatch(event);
     await event.contactTask;
-    assert.equal(calls, 1);
+    assert.equal(calls, 2);
   });
 });
 
@@ -733,7 +767,7 @@ describe("contact privacy", () => {
     await withConsole(async (logs) => {
       start(harness, async (url, init) => {
         calls.push({ url, init });
-        return jsonResponse(true);
+        return jsonResponse("stored");
       });
       fill(harness.fields, {
         name: secretName,
@@ -772,6 +806,10 @@ describe("contact privacy", () => {
       assert.deepEqual(logs, ["Contact submission failed"]);
     });
     const source = readFileSync(new URL("./contact-message.js", import.meta.url), "utf8");
+    assert.deepEqual(
+      [...source.matchAll(/console\.(?:log|info|warn|error|debug)\(([^)\n]*)\)/g)].map((match) => match[1]),
+      ['"Contact submission failed"', '"Contact notification failed"'],
+    );
     assert.equal(source.includes("innerHTML"), false);
     assert.equal(source.includes("outerHTML"), false);
     assert.equal(source.includes("insertAdjacentHTML"), false);
@@ -784,19 +822,297 @@ describe("contact privacy", () => {
   });
 });
 
+function classifyRequest(url) {
+  const value = String(url);
+  if (value.includes("/rpc/submit_contact_message_v2")) return "rpc";
+  if (value === contact.FORMSPREE_ENDPOINT) return "formspree";
+  if (value.includes("submit_contact_message_v1")) return "v1";
+  return "other";
+}
+
+function trackFetch(behavior) {
+  const calls = [];
+  const fetchImpl = async (url, init) => {
+    const kind = classifyRequest(url);
+    calls.push({ kind, url: String(url), init });
+    return behavior(kind, url, init, calls);
+  };
+  return { calls, fetchImpl };
+}
+
+function countKind(calls, kind) {
+  return calls.filter((call) => call.kind === kind).length;
+}
+
+function notificationEntries(body) {
+  assert.equal(typeof body?.entries, "function");
+  return Object.fromEntries(body.entries());
+}
+
+async function waitUntil(predicate) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  assert.fail("condition was not met");
+}
+
+describe("contact dual delivery", () => {
+  it("sends one notification after stored and resets the form", async () => {
+    const harness = createHarness();
+    const tracked = trackFetch(async (kind) => {
+      if (kind === "rpc") return jsonResponse("stored");
+      if (kind === "formspree") return jsonResponse({ ok: true });
+      throw new Error(kind);
+    });
+    start(harness, tracked.fetchImpl);
+    fill(harness.fields, { ...validFields, company: "Bot Inc" });
+    const event = submitEvent();
+    harness.form.dispatch(event);
+    const result = await event.contactTask;
+    assert.equal(result.ok, true);
+    assert.equal(result.status, "stored");
+    assert.equal(result.notified, true);
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 1);
+    assert.equal(countKind(tracked.calls, "v1"), 0);
+    assert.equal(countKind(tracked.calls, "other"), 0);
+    assert.equal(harness.fields.status.textContent, contact.SUCCESS_MESSAGE);
+    assert.equal(harness.fields.name.value, "");
+    assert.equal(harness.fields.email.value, "");
+    assert.equal(harness.fields.message.value, "");
+    assert.equal(harness.fields.company.value, "");
+    assert.equal(harness.fields.button.disabled, false);
+    assert.equal(harness.fields.button.textContent, "送信");
+  });
+
+  it("shows success and does not retry when notification fails after stored", async () => {
+    const secretEmail = "hanako@example.com";
+    const secretMessage = "これは秘密の本文です";
+    const harness = createHarness();
+    const tracked = trackFetch(async (kind) => {
+      if (kind === "rpc") return jsonResponse("stored");
+      if (kind === "formspree") {
+        return jsonResponse({ error: `mailbox rejected ${secretEmail} ${secretMessage}` }, false);
+      }
+      throw new Error(kind);
+    });
+    await withConsole(async (logs) => {
+      start(harness, tracked.fetchImpl);
+      fill(harness.fields, {
+        ...validFields,
+        email: secretEmail,
+        message: secretMessage,
+        company: "Bot Inc",
+      });
+      const event = submitEvent();
+      harness.form.dispatch(event);
+      const result = await event.contactTask;
+      assert.equal(result.ok, true);
+      assert.equal(result.status, "stored");
+      assert.equal(result.notified, false);
+      assert.deepEqual(logs, ["Contact notification failed"]);
+      assert.equal(logs.join("\n").includes(secretEmail), false);
+      assert.equal(logs.join("\n").includes(secretMessage), false);
+    });
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 1);
+    assert.equal(harness.fields.status.textContent, contact.SUCCESS_MESSAGE);
+    assert.equal(harness.fields.status.getAttribute("role"), "status");
+    assert.equal(harness.fields.name.value, "");
+    assert.equal(harness.fields.email.value, "");
+    assert.equal(harness.fields.subject.value, "");
+    assert.equal(harness.fields.message.value, "");
+    assert.equal(harness.fields.button.disabled, false);
+  });
+
+  it("shows success without retry when the notification times out", async () => {
+    const harness = createHarness();
+    const tracked = trackFetch((kind, _url, init) => {
+      if (kind === "rpc") return jsonResponse("stored");
+      if (kind === "formspree") {
+        return new Promise((_resolve, reject) => {
+          init.signal.addEventListener("abort", () => {
+            const error = new Error("aborted");
+            error.name = "AbortError";
+            reject(error);
+          });
+        });
+      }
+      throw new Error(kind);
+    });
+    start(harness, tracked.fetchImpl, { notificationTimeoutMs: 20 });
+    fill(harness.fields);
+    const event = submitEvent();
+    harness.form.dispatch(event);
+    const result = await event.contactTask;
+    assert.equal(result.ok, true);
+    assert.equal(result.notified, false);
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 1);
+    assert.equal(harness.fields.status.textContent, contact.SUCCESS_MESSAGE);
+    assert.equal(harness.fields.email.value, "");
+    assert.equal(harness.fields.button.disabled, false);
+    assert.equal(harness.fields.button.textContent, "送信");
+  });
+
+  it("does not notify when the rpc result is ignored", async () => {
+    const harness = createHarness();
+    const tracked = trackFetch(async (kind) => {
+      if (kind === "rpc") return jsonResponse("ignored");
+      throw new Error(kind);
+    });
+    start(harness, tracked.fetchImpl);
+    fill(harness.fields, { ...validFields, company: "Bot Inc" });
+    const event = submitEvent();
+    harness.form.dispatch(event);
+    const result = await event.contactTask;
+    assert.equal(result.ok, true);
+    assert.equal(result.status, "ignored");
+    assert.equal(result.notified, false);
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 0);
+    const payload = JSON.parse(tracked.calls[0].init.body);
+    assert.equal(payload.p_company, "Bot Inc");
+    assert.equal(harness.fields.status.textContent, contact.SUCCESS_MESSAGE);
+    assert.equal(harness.fields.status.textContent.includes("重複"), false);
+    assert.equal(harness.fields.name.value, "");
+    assert.equal(harness.fields.company.value, "");
+  });
+
+  it("does not notify when the rpc request fails", async () => {
+    const harness = createHarness();
+    const tracked = trackFetch(async (kind) => {
+      if (kind === "rpc") return jsonResponse({ message: "submit rejected" }, false);
+      throw new Error(kind);
+    });
+    await withConsole(async (logs) => {
+      start(harness, tracked.fetchImpl);
+      fill(harness.fields, { ...validFields, company: "Bot Inc" });
+      const event = submitEvent();
+      harness.form.dispatch(event);
+      const result = await event.contactTask;
+      assert.equal(result.ok, false);
+      assert.equal(result.reason, "http");
+      assert.deepEqual(logs, ["Contact submission failed"]);
+    });
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 0);
+    assert.equal(harness.fields.status.textContent, contact.FAILURE_MESSAGE);
+    assert.equal(harness.fields.status.getAttribute("role"), "alert");
+    assert.equal(harness.fields.name.value, validFields.name);
+    assert.equal(harness.fields.email.value, validFields.email);
+    assert.equal(harness.fields.subject.value, validFields.subject);
+    assert.equal(harness.fields.message.value, validFields.message);
+    assert.equal(harness.fields.company.value, "Bot Inc");
+  });
+
+  it("builds one historical notification payload and keeps the inbox subject code", async () => {
+    const forbidden = ["id", "read_at", "archived_at", "company", "p_company", "honeypot", "status", "subject", "apikey", "p_name", "p_email", "p_subject", "p_message"];
+    for (const subject of contact.SUBJECT_CODES) {
+      const harness = createHarness();
+      const tracked = trackFetch(async (kind) => {
+        if (kind === "rpc") return jsonResponse("stored");
+        if (kind === "formspree") return jsonResponse({ ok: true });
+        throw new Error(kind);
+      });
+      start(harness, tracked.fetchImpl);
+      fill(harness.fields, { ...validFields, subject, company: "Bot Inc" });
+      const event = submitEvent();
+      harness.form.dispatch(event);
+      await event.contactTask;
+      assert.equal(countKind(tracked.calls, "rpc"), 1);
+      assert.equal(countKind(tracked.calls, "formspree"), 1);
+      const rpc = tracked.calls.find((call) => call.kind === "rpc");
+      const notice = tracked.calls.find((call) => call.kind === "formspree");
+      assert.equal(JSON.parse(rpc.init.body).p_subject, subject);
+      assert.equal(notice.url, "https://formspree.io/f/xblzygzb");
+      assert.equal(notice.url.includes("?"), false);
+      assert.equal(notice.init.method, "POST");
+      assert.deepEqual(notice.init.headers, { Accept: "application/json" });
+      assert.equal(Object.hasOwn(notice.init.headers, "Content-Type"), false);
+      assert.equal(notice.init.headers.apikey, undefined);
+      assert.equal(notice.init.headers.Authorization, undefined);
+      const entries = notificationEntries(notice.init.body);
+      assert.deepEqual(entries, {
+        name: validFields.name,
+        email: validFields.email,
+        message: validFields.message,
+        _subject: "【ArcanaCharm】Webお問い合わせ",
+        お問い合わせ内容: contact.SUBJECT_LABELS[subject],
+      });
+      const serialized = JSON.stringify(entries);
+      assert.equal(serialized.includes("Bot Inc"), false);
+      assert.equal(serialized.includes(config.supabasePublishableKey), false);
+      assert.equal(serialized.includes("service_role"), false);
+      for (const key of forbidden) assert.equal(Object.hasOwn(entries, key), false, `${subject}:${key}`);
+    }
+  });
+
+  it("holds the submit button until the single notification attempt finishes", async () => {
+    const harness = createHarness();
+    let release;
+    const pending = new Promise((resolve) => {
+      release = () => resolve(jsonResponse({ ok: true }));
+    });
+    const tracked = trackFetch((kind) => {
+      if (kind === "rpc") return jsonResponse("stored");
+      if (kind === "formspree") return pending;
+      throw new Error(kind);
+    });
+    start(harness, tracked.fetchImpl);
+    fill(harness.fields);
+    const first = submitEvent();
+    harness.form.dispatch(first);
+    await waitUntil(() => countKind(tracked.calls, "formspree") === 1);
+    assert.equal(harness.fields.button.disabled, true);
+    assert.equal(harness.fields.button.textContent, "送信中...");
+    const second = submitEvent();
+    harness.form.dispatch(second);
+    const ignored = await second.contactTask;
+    assert.equal(ignored.reason, "inflight");
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 1);
+    release();
+    const result = await first.contactTask;
+    assert.equal(result.ok, true);
+    assert.equal(result.notified, true);
+    assert.equal(countKind(tracked.calls, "rpc"), 1);
+    assert.equal(countKind(tracked.calls, "formspree"), 1);
+    assert.equal(harness.fields.button.disabled, false);
+  });
+});
+
 describe("legacy contact provider removal and independence", () => {
-  it("has no external form endpoint or hidden subject field in the project", () => {
+  it("keeps the historical notification endpoint out of markup and other features", () => {
     const provider = "form" + "spree";
-    const hiddenSubject = new RegExp("(?<!p)_" + "subject");
-    const oldId = "xblz" + "ygzb";
+    const formId = "xblz" + "ygzb";
+    const root = path.dirname(fileURLToPath(import.meta.url));
+    const allowed = new Set([
+      path.join(root, "contact-message.js"),
+      path.join(root, "contact-message.test.mjs"),
+    ]);
     for (const file of readProjectFiles()) {
+      if (allowed.has(file)) continue;
       const source = readFileSync(file, "utf8");
       assert.equal(source.toLowerCase().includes(provider), false, file);
-      assert.equal(hiddenSubject.test(source), false, file);
-      assert.equal(source.includes(oldId), false, file);
+      assert.equal(source.includes(formId), false, file);
+      assert.equal(source.includes('name="_subject"'), false, file);
+      assert.equal(/<form\b[^>]*\baction\s*=/i.test(source), false, file);
     }
+    const form = contactFormMarkup();
+    assert.equal(/<form\b[^>]*\baction\s*=/i.test(form), false);
+    assert.equal(form.toLowerCase().includes(provider), false);
     const submission = readFileSync(new URL("./contact-message.js", import.meta.url), "utf8");
+    assert.equal(submission.includes(contact.FORMSPREE_ENDPOINT), true);
+    assert.equal(submission.includes(`https://${provider}.io/f/${formId}`), true);
+    assert.equal(submission.includes(contact.FORMSPREE_SUBJECT), true);
+    assert.equal(contact.FORMSPREE_SUBJECT, "【ArcanaCharm】Webお問い合わせ");
     assert.equal(submission.includes("p_" + "subject"), true);
+    assert.equal(submission.includes("submit_contact_message_v1"), false);
+    assert.equal(submission.includes("/rest/v1/rpc/submit_contact_message_v2"), true);
+    assert.equal(/<form\b[^>]*action\s*=/.test(submission), false);
+    assert.equal(/new\s+FormData\s*\(\s*[A-Za-z_$]/.test(submission), false);
   });
 
   it("does not share initialization with members, gallery, about, or visual collection", () => {
@@ -807,11 +1123,15 @@ describe("legacy contact provider removal and independence", () => {
     assert.equal(source.includes("startMembersCms"), false);
     assert.equal(source.includes("startGalleryCms"), false);
     assert.equal(source.includes("startAboutCms"), false);
+    assert.equal(source.includes("submit_contact_message_v1"), false);
+    assert.equal(source.includes("/rest/v1/rpc/submit_contact_message_v2"), true);
     for (const file of ["members-cms.js", "gallery-cms.js", "about-cms.js", "visual-collection-nav.js", "script.js"]) {
       const other = readFileSync(new URL(`./${file}`, import.meta.url), "utf8");
       assert.equal(other.includes("submit_contact_message_v1"), false, file);
+      assert.equal(other.includes("submit_contact_message_v2"), false, file);
       assert.equal(other.includes("contact-message"), false, file);
     }
     assert.equal(contact.FETCH_TIMEOUT_MS >= 10000 && contact.FETCH_TIMEOUT_MS <= 15000, true);
+    assert.equal(contact.NOTIFICATION_TIMEOUT_MS >= 8000 && contact.NOTIFICATION_TIMEOUT_MS <= 10000, true);
   });
 });
